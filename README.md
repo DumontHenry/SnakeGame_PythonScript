@@ -1,2 +1,2 @@
 # SnakeGame_PythonScript
-Smal SnakeGame made with PyGame
+Small SnakeGame made with PyGame
