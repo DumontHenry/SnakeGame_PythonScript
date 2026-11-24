@@ -1,0 +1,111 @@
+import sys
+from random import choice
+
+import pygame
+
+# ---------------- Configuration ----------------
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 900
+BASE = r"C:\Users\HenryDUMONT\Desktop\snake game"
+HEAD_IMAGE_PATH = BASE + r"\_head.png"
+BODY_IMAGE_PATH = BASE + r"\_body.png"
+FRUIT_IMAGE_PATH = BASE + r"\_fruit.png"
+USER_PSEUDO = "Player1"
+SPEED = 50  # 1 (slow) to 100 (fast)
+
+CELL = 35
+BG = (250, 250, 250)
+TEXT = (0, 0, 0)
+DIRECTIONS = {
+    pygame.K_UP: (0, -1),
+    pygame.K_DOWN: (0, 1),
+    pygame.K_LEFT: (-1, 0),
+    pygame.K_RIGHT: (1, 0),
+}
+
+
+def load_sprite(path, fallback_color):
+    try:
+        surface = pygame.image.load(path).convert_alpha()
+    except (pygame.error, FileNotFoundError) as exc:
+        print(f"Could not load '{path}' ({exc}). Using a colored square.")
+        surface = pygame.Surface((CELL, CELL))
+        surface.fill(fallback_color)
+    return pygame.transform.scale(surface, (CELL, CELL))
+
+
+def main():
+    cols, rows = SCREEN_WIDTH // CELL, SCREEN_HEIGHT // CELL
+    pygame.init()
+    window = pygame.display.set_mode((cols * CELL, rows * CELL))
+    pygame.display.set_caption("Snake")
+    clock = pygame.time.Clock()
+    font = pygame.font.SysFont(None, 50)
+
+    head_img = load_sprite(HEAD_IMAGE_PATH, (30, 120, 30))
+    body_img = load_sprite(BODY_IMAGE_PATH, (80, 180, 80))
+    fruit_img = load_sprite(FRUIT_IMAGE_PATH, (200, 40, 40))
+
+    snake = [(cols // 2, rows // 2), (cols // 2, rows // 2 + 1)]
+    direction = next_direction = (0, 0)
+    score = 0
+
+    def spawn_fruit():
+        free = [(c, r) for c in range(cols) for r in range(rows) if (c, r) not in snake]
+        return choice(free) if free else None
+
+    fruit = spawn_fruit()
+    playing = True
+
+    while playing and fruit is not None:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                playing = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    playing = False
+                elif event.key in DIRECTIONS:
+                    new = DIRECTIONS[event.key]
+                    if new != (-direction[0], -direction[1]):  # no 180-degree turn
+                        next_direction = new
+
+        direction = next_direction
+        if direction != (0, 0):
+            head = (snake[0][0] + direction[0], snake[0][1] + direction[1])
+            eating = head == fruit
+            body = snake if eating else snake[:-1]
+            if not (0 <= head[0] < cols and 0 <= head[1] < rows) or head in body:
+                playing = False
+            else:
+                snake.insert(0, head)
+                if eating:
+                    score += 1
+                    fruit = spawn_fruit()
+                else:
+                    snake.pop()
+
+        window.fill(BG)
+        if fruit:
+            window.blit(fruit_img, (fruit[0] * CELL, fruit[1] * CELL))
+        for c, r in snake[1:]:
+            window.blit(body_img, (c * CELL, r * CELL))
+        window.blit(head_img, (snake[0][0] * CELL, snake[0][1] * CELL))
+
+        score_surf = font.render(f"Snake Score: {score}", True, TEXT)
+        window.blit(score_surf, score_surf.get_rect(midtop=(window.get_width() // 2, 10)))
+        window.blit(font.render(f"Player: {USER_PSEUDO}", True, TEXT), (10, 10))
+
+        pygame.display.flip()
+        clock.tick(3 + SPEED * 0.17)  # ~3 to 20 moves per second
+
+    print(f"Game over, score: {score}")
+    over = font.render(f"Game over - Score: {score}", True, TEXT)
+    window.blit(over, over.get_rect(center=window.get_rect().center))
+    pygame.display.flip()
+    pygame.time.wait(1500)
+    pygame.quit()
+    sys.exit()
+
+
+if __name__ == "__main__":
+    main()
